@@ -1,0 +1,4 @@
+{
+  "density_arr_file": "./2MPP/twompp_density.npy",
+  "velocity_arr_file": "./2MPP/twompp_velocity.npy"
+}
