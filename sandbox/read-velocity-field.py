@@ -44,13 +44,59 @@ if __name__ == '__main__':
         + velocity_arr[1] * Y_gr / R_gr \
         + velocity_arr[2] * Z_gr / R_gr
 
-    # convert galactocentric to cartesian
+    # interpolator
     Vr_intp = RegularGridInterpolator((a_gr, a_gr, a_gr), V_r,)
     d_intp = RegularGridInterpolator((a_gr, a_gr, a_gr), density_arr,)
 
-    cx, cy, cz = galactic_Rn(138., 33.)
-    R = np.linspace(0., 200., 256)
-    Vr_R = Vr_intp(np.dstack((cx * R, cy * R, cz * R)))
-    d_R = d_intp(np.dstack((cx * R, cy * R, cz * R)))
-    plt.plot(R * 72., Vr_R[0])
-    plt.plot(R * 72., d_R[0] * 100.), plt.show()
+    H = 72. # or 69 if you like.
+
+    # make a figure
+    if 1:
+
+        # convert galactocentric to cartesian
+        cx, cy, cz = galactic_Rn(138., 33.)
+        R = np.linspace(0., 200., 256)
+        R_vec = np.dstack((cx * R, cy * R, cz * R))
+        Vr_R, d_R = Vr_intp(R_vec), d_intp(R_vec)
+
+        fig = plt.figure(figsize=(8., 4.))
+        ax1 = fig.add_subplot(2, 1, 1)
+        ax1.plot(R, Vr_R[0])
+        ax2 = fig.add_subplot(2, 1, 2, sharex=ax1)
+        ax2.plot(R, d_R[0])
+        ax2.axhline(y=0., ls='dashed', c='0.5')
+
+        ax1.set_ylabel('$\Delta$ V')
+        ax2.set_ylabel('$\delta$')
+        ax2.set_xlabel('Distance [Mpc/h]')
+        plt.savefig('fig1.pdf')
+        plt.show()
+
+    # search for triple value cases
+    if 1:
+        R = np.linspace(0., 200., 512)
+        delta_R = np.median(np.diff(R))
+        R_mp = (R[1:] + R[:-1]) / 2.
+        Rc_mv, i_pt = np.empty((8192, 4)), 0
+        while True:
+            c = np.random.randn(3)
+            c = c / np.sqrt(np.sum(c ** 2))
+            Vr_R = Vr_intp(np.outer(R, c)) + R * H
+            V_diff = np.diff(Vr_R) / delta_R
+            if np.sum(V_diff < 0) > 0:
+                d_med = np.random.choice(R_mp[V_diff < 0.])
+                Rc_mv[i_pt, :] = (c[0], c[1], c[2], d_med)
+                i_pt += 1
+            if i_pt == Rc_mv.shape[0]:
+                break
+        Rc_mv = np.array(Rc_mv)
+        b = np.arcsin(Rc_mv[:, 2])
+        l = np.arctan2(Rc_mv[:, 1], Rc_mv[:, 0])
+        fig = plt.figure(figsize=(12, 6))
+        ax = fig.add_subplot(1, 1, 1, aspect='equal')
+        ax.scatter(l, b, s=1., c=Rc_mv[:, 3],
+                   vmin=0., vmax=200., cmap='jet', alpha=0.75)
+        ax.set_xlim(np.pi, -np.pi)
+        ax.set_ylim(-np.pi / 2., np.pi / 2.)
+        plt.savefig('fig2.pdf')
+        plt.show()
