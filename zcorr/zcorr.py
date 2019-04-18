@@ -5,7 +5,7 @@
 
     TODO:
         disclaimer,
-        warning for multiple values,
+        warning for multiple values, (DONE)
         fine-tuning root finding.
         (YQ, 04/14)
 
@@ -66,13 +66,35 @@ class ZcorrClass(object):
         xi_cart = np.outer(self._R_ax, [cx, cy, cz]) # GC, cartesian, Mpc/h
         Vp_R = self._Vr_pec_intp(xi_cart) # Vr_pec along xi_cart (LOS)
 
-        # root-finding.
+        # define target function for root-finding
         v_obs = self._c * z_obs
         vrp_intp = interp1d(self._R_ax, Vp_R, fill_value='extrapolate')
         rfc = lambda d: v_obs - (1.e2 * self._hsq) * d - vrp_intp(d)
-        d_opt = newton(rfc, z_obs * self._c / (100. * (h ** 2)),)
 
-        return d_opt
+        # check: triple-valued regions?
+        Vr = 1.e2 * self._hsq * xi_cart + Vp_R # redshift + pec motion
+        d_Vr = np.gradient(Vr) # marks triple-value zones.
+
+        # split into monotonic regions.
+        if np.sum(d_Vr < 0.) == 0: # monotonic
+            Mrg = [(0, 512)] # just a single monotonic region.
+        else: # having multiple monotonic regions:
+            dVrz = np.arange(512)[d_Vr[:-1] * d_Vr[1:] < 0.] # indices of zeros
+            Mrg = [(0, dVrz[0])] + [(i_zero, j_zero) for i_zero, j_zero \
+                    in zip(dVrz[:-1], dVrz[1:])] + [(dVrz[-1], 512)]
+
+        # for each monotonic interval: find possible 'd_opt'
+        dopt_vals = list()
+        for i_zero, j_zero in Mrg:
+            Vr_sct = Vr[i_zero: j_zero]
+            Vr_max, Vr_min = Vr_sct.max(), Vr_sct.min()
+            if (v_obs < Vr_min) or (v_obs > Vr_max): # beyond range: skip
+                continue
+            d_opt = brentq(rfc, self._R_ax[i_zero], self._R_ax[j_zero])
+            dopt_vals.append(d_opt)
+
+        # return a list of possible d.
+        return np.array(dopt_vals)
 
     def zcorr(self, ra, dec, z_obs,): # ** assuming z_obs in cmb frame.
 

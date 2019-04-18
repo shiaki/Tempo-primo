@@ -36,4 +36,5 @@ if __name__ == '__main__':
     plt.xlabel('Distance [Mpc/h]')
     plt.ylabel('Observed velocity')
     plt.legend()
+    plt.savefig('fig3.pdf')
     plt.show()
