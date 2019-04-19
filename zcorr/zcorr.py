@@ -16,7 +16,7 @@
 import os
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator, interp1d
-from scipy.optimize import newton
+from scipy.optimize import newton, brentq
 import astropy.coordinates as crd
 
 def galactic_Rn(ra, dec):
@@ -59,12 +59,20 @@ class ZcorrClass(object):
         self._hsq = h ** 2
         self._R_ax = np.linspace(0., 200., 512)
 
-    def _dc(ra, dec, z_obs,):
+    def _dc(self, ra, dec, z_obs,):
 
         # otherwise: calculate V_pec corrected redshift.
         cx, cy, cz = galactic_Rn(ra, dec)
         xi_cart = np.outer(self._R_ax, [cx, cy, cz]) # GC, cartesian, Mpc/h
         Vp_R = self._Vr_pec_intp(xi_cart) # Vr_pec along xi_cart (LOS)
+
+        # fix invalid values.
+        i_valid_vp = 0
+        while np.isnan(Vp_R[i_valid_vp]): i_valid_vp += 1
+        if i_valid_vp: # peculiar velocity not available,
+            Vp_R[:i_valid_vp] = Vp_R[i_valid_vp] \
+                    * np.linspace(0., 1., i_valid_vp + 1)[:-1]
+            # linear interpolation at beginning.
 
         # define target function for root-finding
         v_obs = self._c * z_obs
@@ -72,25 +80,27 @@ class ZcorrClass(object):
         rfc = lambda d: v_obs - (1.e2 * self._hsq) * d - vrp_intp(d)
 
         # check: triple-valued regions?
-        Vr = 1.e2 * self._hsq * xi_cart + Vp_R # redshift + pec motion
+        Vr = 1.e2 * self._hsq * self._R_ax + Vp_R # redshift + pec motion
         d_Vr = np.gradient(Vr) # marks triple-value zones.
 
         # split into monotonic regions.
-        if np.sum(d_Vr < 0.) == 0: # monotonic
+        if np.nansum(d_Vr < 0.) == 0: # monotonic
             Mrg = [(0, 512)] # just a single monotonic region.
         else: # having multiple monotonic regions:
-            dVrz = np.arange(512)[d_Vr[:-1] * d_Vr[1:] < 0.] # indices of zeros
+            dVrz = np.arange(511)[d_Vr[:-1] * d_Vr[1:] < 0.] # indices of zeros
             Mrg = [(0, dVrz[0])] + [(i_zero, j_zero) for i_zero, j_zero \
                     in zip(dVrz[:-1], dVrz[1:])] + [(dVrz[-1], 512)]
 
         # for each monotonic interval: find possible 'd_opt'
         dopt_vals = list()
         for i_zero, j_zero in Mrg:
+            if j_zero - i_zero < 2: # just a tiny spike
+                continue
             Vr_sct = Vr[i_zero: j_zero]
             Vr_max, Vr_min = Vr_sct.max(), Vr_sct.min()
             if (v_obs < Vr_min) or (v_obs > Vr_max): # beyond range: skip
                 continue
-            d_opt = brentq(rfc, self._R_ax[i_zero], self._R_ax[j_zero])
+            d_opt = brentq(rfc, self._R_ax[i_zero], self._R_ax[j_zero - 1])
             dopt_vals.append(d_opt)
 
         # return a list of possible d.
@@ -102,7 +112,7 @@ class ZcorrClass(object):
 
         # beyond the range: return original z.
         if z_obs > 2.e2 * (1.e2 * self._hsq) / self._c:
-            return z_obs # about 0.03
+            return np.array([z_obs]) # about 0.03
 
         d_opt = self._dc(ra, dec, z_obs)
         return d_opt * (1.e2 * self._hsq / self._c)
@@ -113,7 +123,7 @@ class ZcorrClass(object):
 
         # beyond the range: return original z.
         if z_obs > 2.e2 * (1.e2 * self._hsq) / self._c:
-            return z_obs * self._c / (1.e2 * self._h)
+            return np.array([z_obs]) * self._c / (1.e2 * self._h)
             # ** only works for local universe
 
         d_opt = self._dc(ra, dec, z_obs)
