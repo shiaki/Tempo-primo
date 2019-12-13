@@ -1,3 +1,10 @@
+# editor
+.vscode
+
+# figures
+*.png
+*.pdf
+
 # data files.
 *.npy
 *.npz
