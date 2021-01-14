@@ -19,15 +19,15 @@ if __name__ == '__main__':
     Rc, s = 100., 10. # Mpc/h
     Gc = -np.exp(-0.5 * (R - Rc) ** 2 / (s ** 2)) * (R - Rc) / (s ** 2)
     Vp = Gc * 2.5e4 # peculiar velocity, km/s
-    Vr = 1.e2 * R * (h ** 2) + Vp # observed velocity, km/s
+    Vr = 1.e2 * R + Vp # observed velocity, km/s
     Vp_intp = interp1d(R, Vp, fill_value='extrapolate')
 
     # root finding
-    rfc = lambda D, Vt: Vt - (1.e2 * (h ** 2)) * D - Vp_intp(D)
+    rfc = lambda D, Vt: Vt - 1.e2 * D - Vp_intp(D)
 
     rec_pos = list()
     for v_i in np.random.choice(Vr, size=25):
-        d_i = newton(rfc, v_i / (100. * (h ** 2)), args=(v_i,))
+        d_i = newton(rfc, v_i / 100., args=(v_i,))
         rec_pos.append((d_i, v_i))
     rec_pos = np.array(rec_pos)
 

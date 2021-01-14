@@ -66,23 +66,22 @@ if __name__ == '__main__':
 
     H = 72. # or 69 if you like.
 
+    fig_name = 'Coma'
+    cx, cy, cz = galactic_Rn(194.9529167, 27.9805556) # Coma
+
+    # fig_name = 'Perseus'
+    # cx, cy, cz = galactic_Rn(49.9505, 41.5117) # Perseus
+
+    # fig_name = 'Shapley'
+    # cx, cy, cz = galactic_Rn(201.9783333, -31.4922222) # Shapley
+
+    # fig_name = 'Hercules'
+    # cx, cy, cz = galactic_Rn(241.1490, 17.7216) # Hercules
+
     # make a figure
     if 1:
 
         # convert galactocentric to cartesian
-
-        # fig_name = 'Coma'
-        # cx, cy, cz = galactic_Rn(194.9529167, 27.9805556) # Coma
-
-        # fig_name = 'Perseus'
-        # cx, cy, cz = galactic_Rn(49.9505, 41.5117) # Perseus
-
-        # fig_name = 'Shapley'
-        # cx, cy, cz = galactic_Rn(201.9783333, -31.4922222) # Shapley
-
-        fig_name = 'Hercules'
-        cx, cy, cz = galactic_Rn(241.1490, 17.7216) # Hercules
-
         R = np.linspace(0., 200., 256)
         R_vec = np.dstack((cx * R, cy * R, cz * R))
         Vr_R, d_R = Vr_intp(R_vec), d_intp(R_vec)
@@ -98,45 +97,33 @@ if __name__ == '__main__':
         ax2.set_ylabel('$\delta$')
         ax2.set_xlabel('Distance [Mpc/h]')
         plt.savefig('fig1-{:}.pdf'.format(fig_name))
+        plt.savefig('fig1-{:}.png'.format(fig_name))
         plt.show()
 
     # Hubble flow + pec vel.
     if 1:
 
         # convert galactocentric to cartesian
-
-        # fig_name = 'Coma'
-        # cx, cy, cz = galactic_Rn(194.9529167, 27.9805556) # Coma
-
-        # fig_name = 'Perseus'
-        # cx, cy, cz = galactic_Rn(49.9505, 41.5117) # Perseus
-
-        # fig_name = 'Shapley'
-        # cx, cy, cz = galactic_Rn(201.9783333, -31.4922222) # Shapley
-
-        fig_name = 'Hercules'
-        cx, cy, cz = galactic_Rn(241.1490, 17.7216) # Hercules
-
         R = np.linspace(0., 200., 256)
         R_vec = np.dstack((cx * R, cy * R, cz * R))
 
         Vr_R, d_R = Vr_intp(R_vec), d_intp(R_vec)
         Vx, Vy, Vz = Vx_intp(R_vec), Vy_intp(R_vec), Vz_intp(R_vec)
-
         Vr_c = Vx * cx + Vy * cy + Vz * cz
 
         fig = plt.figure(figsize=(8., 4.))
         ax1 = fig.add_subplot(1, 1, 1)
-        ax1.plot(R * H / 100., Vr_R[0] + H * R, c='C0')
-        ax1.plot(R * H / 100., Vr_c[0] + H * R, c='C4')
-        
-        ax1.set_ylabel('$V_{\mathrm{Helio}}$')
+        ax1.plot(R * 100. / H,           H * R, c='C0')
+        ax1.plot(R * 100. / H, Vr_c[0] + H * R, c='C4')
+
+        ax1.set_ylabel('$V_{\mathrm{CMB}}$')
         ax1.set_xlabel('Distance [Mpc] (H={:})'.format(H))
         plt.savefig('fig2-{:}.pdf'.format(fig_name))
+        plt.savefig('fig2-{:}.png'.format(fig_name))
         plt.show()
 
     # search for triple value cases
-    if 1:
+    if 0:
         R = np.linspace(0., 200., 512)
         delta_R = np.median(np.diff(R))
         R_mp = (R[1:] + R[:-1]) / 2.
